@@ -1,0 +1,84 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from numpy import linalg as la
+import math
+
+# target function
+def target_function(data):
+    n = len(data)
+    y = np.empty((n, 1))
+    for i in range(n):
+        y[i] = math.sin(data[i]) + math.sin(data[i]) ** 2
+    return y
+
+# gaussian kernel function
+def gaussian_kernel(xi,xj):
+    delta_f = 1.0
+    l = 1.0
+    sigma = 0.001
+    if xi==xj: delta =1.0
+    else:delta = 0.0
+    kernel_k = delta_f ** 2 * np.exp(-(xi-xj)**2/(2*l**2))+ sigma * delta
+    return kernel_k
+
+# K matrix for train data
+def kernel_K(x1):
+    N = len(x1)
+    K = np.empty((N,N))
+    I = np.eye(N)
+    for i in range(N):
+        for j in range(N):
+            K[i,j] = gaussian_kernel(x1[i], x1[j])
+    return K
+
+# K_z matrix for K_z vector like k = [k(x1,xn+1),...,k(xn,kn+1)]
+def kernel_Kz(x1,x2):
+    #N = len(x1)
+    n = len(x1)
+    K_z = np.empty((n,1))
+    for i in range(n):
+        K_z[i,0] = gaussian_kernel(x1[i], x2)
+    return K_z
+
+
+
+number = 2*np.pi/0.005
+x2 = np.linspace(0,2*np.pi,number)
+y2 = target_function(x2)
+x1 = []
+N_x2 = len(x2)
+n = 0
+
+for i in range(16):
+    mu = np.empty((N_x2, 1))
+    std = np.empty((N_x2, 1))
+
+    C_N = kernel_K(x1)
+    #N_x1 = len(x1)
+    y1 = target_function(x1)
+    largest_std = -1000.0
+    largest_index = -1
+
+    for j in range(N_x2):
+        k = kernel_Kz(x1,x2[j])
+        c = gaussian_kernel(x2[j], x2[j]) + 0.001
+        mu[j] = k.T@ la.solve(C_N,y1)
+        std[j] = np.sqrt(c-k.T@la.solve(C_N,k))
+        if (largest_std < std[j]):
+            largest_std = std[j]
+            largest_index = j
+
+    if(i==0 or i==1 or i==3 or i==7 or i==15):
+        n += 1
+        plt.subplot(2, 3, n)
+        yy1 = (mu - 2 * std).flatten()
+        yy2 = (mu + 2 * std).flatten()
+        plt.plot(x2, y2)
+        plt.plot(x2, mu)
+        plt.plot(x1,y1,'+',color='black')
+        plt.title('the {}. iteration'.format(i+1))
+        plt.fill_between(x2, yy1, yy2, facecolor='lavender')
+
+    x1.append(x2[largest_index])
+
+plt.show()
