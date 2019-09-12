@@ -1,0 +1,83 @@
+"""
+Class Density
+Date:02.06.2019
+Author:Yulian Sun
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+
+f1 = np.loadtxt('../densEst1.txt', dtype=float)
+f2 = np.loadtxt('../densEst2.txt', dtype=float)
+
+def guassian_distribution_2d(x,mu,sigma):
+    n = mu.shape[0]
+    sigma_det = np.linalg.det(sigma)
+    sigma_inv = np.linalg.inv(sigma)
+    N = np.sqrt((2 * np.pi) ** n * sigma_det)
+    #fac = np.dot(np.dot((x-mu),sigma_inv),(x-mu).T)
+    fac = np.einsum('...k,kl,...l->...', x - mu, sigma_inv, x - mu)
+    equ = np.exp(-fac / 2) / N
+    #estimator = np.log(equ)
+    return equ
+
+
+def main():
+    file1 = f1
+    mu1 = np.mean(file1, axis=0)  # C1 average
+    len1 = len(file1)
+    sigma_squa1 = np.cov(file1.T, bias=True)
+    unsigma_squa1 = np.cov(file1.T, bias=False)
+
+    estimator1 = guassian_distribution_2d(file1, mu1, sigma_squa1)
+    un_estimator1 = guassian_distribution_2d(file1, mu1, unsigma_squa1)
+    #print('biased estimator for C1 is\n',estimator1,'\n unbiased estimator for C1 is\n',un_estimator1)
+
+    file2 = f2
+    mu2 = np.mean(file2, axis=0)  # C2 average
+    len2 = len(file2)
+    sigma_squa2 = np.cov(file1.T, bias=True)
+    unsigma_squa2 = np.cov(file1.T, bias=False)
+    estimator2 = guassian_distribution_2d(file2,mu2,sigma_squa1)
+    un_estimator2 = guassian_distribution_2d(file2,mu2,unsigma_squa1)
+    #print('biased estimator for C2 is\n', estimator2, '\n unbiased estimator for C2 is\n', un_estimator2)
+
+    # calculate prior probability of C1 and C2
+    P_C1 = len1 / (len1 + len2)
+    P_C2 = 1 - P_C1
+
+    # draw points
+    file1 = f1
+    file2 = f2
+
+    # draw probabiity density C1
+    X1 = np.linspace(-10, 10, 60)
+    Y1 = np.linspace(-10, 10, 60)
+    X1, Y1 = np.meshgrid(X1, Y1)
+    pos1 = np.empty(X1.shape + (2,))
+    pos1[:, :, 0] = X1
+    pos1[:, :, 1] = Y1
+    Z1 = guassian_distribution_2d(pos1, mu1, unsigma_squa1)
+
+    # draw probabiity density C2
+    X2 = np.linspace(-10, 10, 60)
+    Y2 = np.linspace(-10, 10, 60)
+    X2, Y2 = np.meshgrid(X2, Y2)
+    pos2 = np.empty(X2.shape + (2,))
+    pos2[:, :, 0] = X2
+    pos2[:, :, 1] = Y2
+    Z2 = guassian_distribution_2d(pos2, mu2, unsigma_squa2)
+
+    fig, ax = plt.subplots()
+    CS1 = ax.contour(X1, Y1, Z1,colors='blue')
+    CS2 = ax.contour(X2, Y2, Z2,colors='red')
+    ax.clabel(CS1, inline=1, fontsize=10)
+    ax.clabel(CS2, inline=1, fontsize=10)
+
+    plt.scatter(file1[:,0],file1[:,1],marker='+')
+    plt.scatter(file2[:,0],file2[:,1],c= 'green', marker='o')
+    plt.ylabel('Probability density of each class:')
+    plt.show()
+if __name__ == '__main__':
+        main()
