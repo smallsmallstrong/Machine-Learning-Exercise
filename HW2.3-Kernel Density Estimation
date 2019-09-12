@@ -1,0 +1,39 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def kde_plot(data):
+   n=len(data)
+   h1=0.03;h2=0.2;h3=0.8 #different kernel bandwidth
+   p1=0;   p2=0;  p3=0
+   x = linspace(-4, 8)
+   for i in range(n): # calculate probability
+      p1+=np.exp(-(x-data[i])**2/(2*h1*h1))/(n*h1*np.sqrt(2*np.pi))
+      p2+=np.exp(-(x-data[i])**2/(2*h2*h2))/(n*h2*np.sqrt(2*np.pi))
+      p3+=np.exp(-(x-data[i])**2/(2*h3*h3))/(n*h3*np.sqrt(2*np.pi))
+   plt.figure();plt.title('KDE')
+   print(p1)
+   plt.plot(x,p1,'r',label='sigma=0.03')
+   plt.plot(x,p2,'b',label='sigma=0.2' )
+   plt.plot(x,p3,'k',label='sigma=0.8' )
+   plt.show()
+   return p1,p2,p3
+tr=np.loadtxt('../nonParamTrain.txt').reshape((-1,1))
+p1,p2,p3=kde_plot(tr)
+# log-likelihood
+p1 = np.log(sum(p1));p2 = np.log(sum(p2));p3 = np.log(sum(p3))
+# print('log-likelihood of sigma=0.03 is:',p1)
+# print('log-likelihood of sigma=0.2 is:',p2)
+# print('log-likelihood of sigma=0.8 is:',p3)
+
+
+
+
+
+
+
+
+
+
+
+
+
