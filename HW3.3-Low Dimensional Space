@@ -1,0 +1,70 @@
+"""
+Low Dimensional Space
+Date:29.06.2019
+Author:Yulian Sun
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+f= np.loadtxt('../iris.txt', delimiter=',')
+file=f[:,0:4]
+
+class PCA:
+    def __init__(self,D,N,file):
+        self.D = D
+        self.N = N
+        self.file = file
+        self.mu = file.mean(axis=0)
+        self.std = file.std(axis=0)
+
+    def data_normalization(self):
+        norm_data = np.empty((self.N,self.D))
+        norm_data =(self.file-self.mu)/self.std
+        return norm_data
+
+    def get_class(self,norm_data):
+        data = np.c_[norm_data,f[:,4]]# reconstruct the matrix
+        C1 = [];C2=[];C3=[]
+        for i in range(self.N):
+            if (data[:,4][i]== 0.0):
+                C1.append(data[i])
+            elif(data[:,4][i]==1.0):
+                C2.append(data[i])
+            elif(data[:,4][i]==2.0):
+                C3.append(data[i])
+        C1 = np.array(C1)
+        C2 = np.array(C2)
+        C3 = np.array(C3)
+        return C1,C2,C3
+
+    def principle_component(self,norm_data):
+        n = len(norm_data)
+        cov =1/n * norm_data.T@norm_data
+        va ,ve = np.linalg.eig(cov)
+        # sorted the eigenvalue and eigenvector from big to small
+        return va ,ve
+
+    def cal_projection(self,vectors,c):
+        for i in range(len(c)):
+            y1 = (vectors[:,0].T@c[:,0:4].T).reshape((len(c),1))
+            y2 = (vectors[:,1].T@c[:,0:4].T).reshape((len(c),1))
+        return y1,y2
+
+
+N = file.shape[0]
+D = file.shape[1]
+pca = PCA(D,N,file)
+norm_data = pca.data_normalization()
+values ,vectors = pca.principle_component(norm_data)
+C1,C2,C3 = pca.get_class(norm_data)
+#print(values,'\n',vectors)
+se1,se2 = pca.cal_projection(vectors,C1)
+ve1,ve2 = pca.cal_projection(vectors,C2)
+vi1,vi2 = pca.cal_projection(vectors,C3)
+
+plt.scatter(se1,se2,label='Setosa')
+plt.scatter(ve1,ve2,label='Versicolour')
+plt.scatter(vi1,vi2,label='Virginica')
+
+plt.legend()
+plt.show()
+#print(file)
