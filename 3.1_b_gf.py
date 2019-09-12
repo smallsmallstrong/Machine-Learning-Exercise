@@ -1,0 +1,46 @@
+"""
+Gaussian Features
+Date:23.06.2019
+Author:Yulian Sun
+"""
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+from numpy import linalg as la
+file = np.loadtxt('../linRegData.txt', dtype=float)
+trainingSet = file[0:20]
+testingSet = file[20:150]
+
+def gaussian(x,mu,sigma_sq):
+    equ1 = 1 / np.sqrt(2 * np.pi * sigma_sq)
+    gaus = equ1 * np.exp(-(x - mu) ** 2 / (2* sigma_sq) )
+    return gaus
+
+# calculate gaussian,plot matrix Phi
+def fit_gaussian(dataset,mean,sigma_sq):
+    input =dataset[:,0]
+    n = len(dataset)
+    phi = np.empty((n, 10))
+    equ = np.empty((n, 10))
+    sum = np.empty((n, 1))
+    for i in range(n):
+        for k in range(len(mean)):
+            equ[i][k] = gaussian(input[i],mean[k],sigma_sq)
+            sum[i] = np.sum(equ[i,:],axis=0)
+
+        phi[i,:] = equ[i,:]/sum[i]
+    Phi = np.array(phi).reshape(n,10)
+    return Phi
+
+sigma_sq = 0.02
+mean = np.linspace(0,2,10)
+data = np.zeros((1000,2))
+data[:,0] = np.linspace(0,2,1000).T
+
+Phi = fit_gaussian(data,mean,sigma_sq)
+print(Phi)
+for i in range(10):
+    plt.plot(data[:,0],Phi[:,i],label='mu{}'.format(i))
+
+plt.legend()
+plt.show()
