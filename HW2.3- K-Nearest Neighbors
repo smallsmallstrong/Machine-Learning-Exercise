@@ -1,0 +1,19 @@
+import numpy as np
+import matplotlib.pyplot as plt
+def kNN(data,K):
+    x=np.linspace(-4,8);p=0
+    # p(x)=K/N/V,for 1-D data V=abs( distance to nearst K-st points)
+    d = np.abs(data -np.array(x)); d.sort(axis=0)
+    v=d[K-1]
+    p=K/v/len(data)
+    return p
+def kNN_plot():
+   trdata=np.loadtxt('../nonParamTrain.txt').reshape((-1,1))
+   p1=kNN(trdata,2);p2=kNN(trdata,8);p3=kNN(trdata,35)
+   plt.figure(); x=np.linspace(-4,8)
+   plt.subplot(311); plt.plot(x,p1,'r',label='sigma=0.03');plt.legend()
+   plt.subplot(312); plt.plot(x,p2,'b',label='sigma=0.2');plt.legend()
+   plt.subplot(313);plt.plot(x,p3,'k',label='sigma=0.8');plt.legend()
+   plt.savefig('kNN');plt.show()
+if __name__ == '__main__':
+    kNN_plot()
