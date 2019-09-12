@@ -1,0 +1,46 @@
+""""
+Content :
+After the success of the Rosetta mission, ESA decided to send a spaceship to rendezvous with the comet THX1138.
+This spacecraft consists of four independent subsystems A, B, C, D. Each subsystem has a probability of failing
+during the journey equal to 1/3.
+1) What is the probability of the spacecraft S to be in working condition (i.e., all subsystems are operational at the
+same time) at the rendezvous?
+2) Given that the spacecraft S is not operating properly, compute analytically the probability that only subsystem
+A has failed.
+3) Instead of computing the probability analytically, do a simple simulation experiment and compare the result to
+the previous solution. Include a snippet of your code.
+4) An improved spacecraft version has been designed. The new spacecraft fails if the critical subsystem A fails, or
+any two subsystems of the remaining B, C, D fail. What is the probability that only subsystem A has failed, given
+that the spacecraft S is failing?
+
+Date: 16.05.2019
+
+
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+import math
+
+def main():
+
+    # definition of Variants
+    Num = 4  # A,B,C,D
+    Ps = 1/3 # probability of failing
+    X  = np.arange(1,Num+1,1) # times
+
+    # calculate probability
+    PList = stats.binom.pmf(X,Num+1,Ps)
+    
+    # draw histogram
+    plt.plot(X,PList,marker = 'o',linestyle= 'None')
+
+    plt.vlines(X,0,PList)
+    plt.xlabel('Independent systems')
+    plt.ylabel('Probability')
+    plt.title('Binomial Distribution')
+    plt.show()
+
+
+if __name__ == '__main__':
+        main()
