@@ -1,0 +1,184 @@
+"""
+Expectation Maximization
+Date:07.06.2019
+Author:Yulian Sun
+"""
+import numpy as np
+import random
+import math
+import matplotlib.pyplot as plt
+
+def gaussain(x,mu,sigma):
+    n = mu.shape[0]
+    sigma_det = np.linalg.det(sigma)
+    sigma_inv = np.linalg.inv(sigma)
+    bott = np.sqrt((2 * np.pi) ** n * sigma_det)
+    fac = np.einsum('...k,kl,...l->...', x - mu, sigma_inv, x - mu)
+    equ = np.exp(-fac / 2) / bott
+    return equ
+
+def gaussian_value(x,mu,sigma):
+     n = mu.shape[0]
+     sigma_det = np.linalg.det(sigma)
+     sigma_inv = np.linalg.inv(sigma)
+     bott = np.sqrt((2 * np.pi) ** n * sigma_det)
+     fac = (x - mu).dot(sigma_inv).dot((x - mu).T)
+     equ = np.exp(-fac / 2) / bott
+     return equ
+
+def E_step(x,mu0,sigma0,w0,mu1,sigma1,w1,
+           mu2,sigma2,w2,mu3,sigma3,w3):
+    """ calculate responsebility of observed data"""
+    res0 = w0 * gaussain(x, mu0, sigma0)
+    res1 = w1 * gaussain(x ,mu1, sigma1)
+    res2 = w2 * gaussain(x, mu2, sigma2)
+    res3 = w3 * gaussain(x, mu3, sigma3)
+
+    sum = res0+res1+res2+res3
+
+    res0 = res0/sum;res0 = res0.reshape((len(x),1))
+    res1 = res1/sum;res1 = res1.reshape((len(x),1))
+    res2 = res2/sum;res2 = res2.reshape((len(x),1))
+    res3 = res3/sum;res3 = res3.reshape((len(x),1))
+    return res0,res1,res2,res3
+
+def M_step(x,mu0,mu1,mu2,mu3,res0,res1,res2,res3):
+    """use responsibility from observed data
+    to update mu ,sigma,and weight"""
+    mu0_new = sum(res0 * x)/np.sum(res0)
+    mu1_new = sum(res1 * x)/np.sum(res1)
+    mu2_new = sum(res2 * x)/np.sum(res2)
+    mu3_new = sum(res3 * x)/np.sum(res3)
+
+    sigma0_new = (res0*(x - mu0)).T.dot(x - mu0)/ np.sum(res0)#(alp1 * (x - mu1)).T.dot(x - mu1)
+    sigma1_new = (res1*(x - mu1)).T.dot(x - mu1) / np.sum(res1)
+    sigma2_new = (res2*(x - mu2)).T.dot(x - mu2) / np.sum(res2)
+    sigma3_new = (res3*(x - mu3)).T.dot(x - mu3) / np.sum(res3)
+
+    w0_new = np.sum(res0) / N
+    w1_new = np.sum(res1) / N
+    w2_new = np.sum(res2) / N
+    w3_new = np.sum(res3) / N
+
+    return mu0_new,mu1_new,mu2_new,mu3_new,\
+           sigma0_new,sigma1_new,sigma2_new,sigma3_new,\
+           w0_new,w1_new,w2_new,w3_new
+
+
+def EM_train(x,iter):
+    dataSet = np.array(x)
+    mu0 = np.array([1, 1]);mu1 = np.array([1, 2]);mu2 = np.array([1, 3]);mu3 = np.array([2, 2])
+    sigma0 = np.array([[1, 0], [0, 1]]);sigma1 = np.array([[0.5, 0], [0, 0.5]]);sigma2 = np.array([[0.5, 0], [0, 0.5]]);
+    sigma3 = np.array([[1, 0], [0, 1]])
+    w0 = 0.2;w1 = 0.3;w2 = 0.4;w3 = 0.1
+    for i in range(iter):
+        res0,res1,res2,res3 = E_step(dataSet,mu0,sigma0,w0,mu1,sigma1,w1,
+           mu2,sigma2,w2,mu3,sigma3,w3)
+        mu0, mu1, mu2, mu3, \
+        sigma0, sigma1, sigma2, sigma3, \
+        w0, w1, w2, w3 = M_step(dataSet,mu0,mu1,mu2,mu3,res0,res1,res2,res3)
+
+    mu = [mu0,mu1,mu2,mu3]
+    sigma = [sigma0,sigma1,sigma2,sigma3]
+    weight = [w0,w1,w2,w3]
+
+    return mu,sigma,weight
+
+def compute_log_likelihood(x,iter):
+    mu, sigma, weight = EM_train(x, iter)
+    N =len(x)
+    #/print(list(gaussain(x, mu[0], sigma[0])))
+    #print(x.shape)
+    lh = np.zeros((N,1))
+    for i in range(N):
+        for k in range(4):
+            lh[i]+=(weight[k]*gaussian_value(x[i],mu[k],sigma[k])).flatten()
+    likelihood = np.sum(np.log(lh))
+    return likelihood
+
+if __name__ == '__main__':
+
+    gmm = np.loadtxt('../gmm.txt', dtype=float)
+    N = len(gmm)
+    print(gmm.shape)
+    X1 = np.linspace(-2, 3, 60)
+    Y1 = np.linspace(-1, 5, 60)
+    X1, Y1 = np.meshgrid(X1, Y1)
+    fig, ax = plt.subplots(2, 3, sharex='col', sharey='row')
+    pos1 = np.empty(X1.shape + (2,))
+    pos1[:, :, 0] = X1
+    pos1[:, :, 1] = Y1
+    mu1, sigma1, weight1 = EM_train(gmm, 1)
+    Z1_1 = gaussain(pos1, mu1[0], sigma1[0])
+    Z1_2 = gaussain(pos1, mu1[1], sigma1[1])
+    Z1_3 = gaussain(pos1, mu1[2], sigma1[2])
+    Z1_4 = gaussain(pos1, mu1[3], sigma1[3])
+    plt.subplot(231)
+    plt.contour(X1, Y1, Z1_1, colors='blue')
+    plt.contour(X1, Y1, Z1_2, colors='red')
+    plt.contour(X1, Y1, Z1_3, colors='purple')
+    plt.contour(X1, Y1, Z1_4, colors='yellow')
+    plt.scatter(gmm[:, 0], gmm[:, 1], marker='+')
+    plt.title('Iteration: t=1')
+
+    mu2, sigma2, weight2 = EM_train(gmm, 3)
+    Z2_1 = gaussain(pos1, mu2[0], sigma2[0])
+    Z2_2 = gaussain(pos1, mu2[1], sigma1[1])
+    Z2_3 = gaussain(pos1, mu2[2], sigma2[2])
+    Z2_4 = gaussain(pos1, mu2[3], sigma2[3])
+    plt.subplot(232)
+    plt.contour(X1, Y1, Z2_1, colors='blue')
+    plt.contour(X1, Y1, Z2_2, colors='red')
+    plt.contour(X1, Y1, Z2_3, colors='purple')
+    plt.contour(X1, Y1, Z2_4, colors='yellow')
+    plt.scatter(gmm[:, 0], gmm[:, 1], marker='+')
+    plt.title('Iteration: t=3')
+
+    mu3, sigma3, weight3 = EM_train(gmm, 5)
+    Z3_1 = gaussain(pos1, mu3[0], sigma3[0])
+    Z3_2 = gaussain(pos1, mu3[1], sigma3[1])
+    Z3_3 = gaussain(pos1, mu3[2], sigma3[2])
+    Z3_4 = gaussain(pos1, mu2[3], sigma3[3])
+    plt.subplot(233)
+    plt.contour(X1, Y1, Z3_1, colors='blue')
+    plt.contour(X1, Y1, Z3_2, colors='red')
+    plt.contour(X1, Y1, Z3_3, colors='purple')
+    plt.contour(X1, Y1, Z3_4, colors='yellow')
+    plt.scatter(gmm[:, 0], gmm[:, 1], marker='+')
+    plt.title('Iteration: t=5')
+
+    mu4, sigma4, weight4 = EM_train(gmm, 10)
+    Z4_1 = gaussain(pos1, mu4[0], sigma4[0])
+    Z4_2 = gaussain(pos1, mu4[1], sigma4[1])
+    Z4_3 = gaussain(pos1, mu4[2], sigma4[2])
+    Z4_4 = gaussain(pos1, mu4[3], sigma4[3])
+    plt.subplot(234)
+    plt.contour(X1, Y1, Z4_1, colors='blue')
+    plt.contour(X1, Y1, Z4_2, colors='red')
+    plt.contour(X1, Y1, Z4_3, colors='purple')
+    plt.contour(X1, Y1, Z4_4, colors='yellow')
+    plt.scatter(gmm[:, 0], gmm[:, 1], marker='+')
+    plt.title('Iteration: t=10')
+
+    mu5, sigma5, weight5 = EM_train(gmm, 30)
+    Z5_1 = gaussain(pos1, mu5[0], sigma5[0])
+    Z5_2 = gaussain(pos1, mu5[1], sigma5[1])
+    Z5_3 = gaussain(pos1, mu5[2], sigma5[2])
+    Z5_4 = gaussain(pos1, mu5[3], sigma5[3])
+    plt.subplot(235)
+    plt.contour(X1, Y1, Z5_1, colors='blue')
+    plt.contour(X1, Y1, Z5_2, colors='red')
+    plt.contour(X1, Y1, Z5_3, colors='purple')
+    plt.contour(X1, Y1, Z5_4, colors='yellow')
+    plt.scatter(gmm[:, 0], gmm[:, 1], marker='+')
+    plt.title('Iteration: t=30')
+
+    plt.subplot(236)
+    X = np.arange(30)+1
+    Y = []
+    for i in range (1,31):
+        Y.append(compute_log_likelihood(gmm, i))
+    plt.plot(X, Y)
+    plt.title('log-likelihood: t=1:30')
+
+    plt.show()
