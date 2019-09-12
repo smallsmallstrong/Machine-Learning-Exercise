@@ -1,0 +1,24 @@
+import numpy as np
+import matplotlib.pyplot as plt
+data=np.loadtxt('nonParamTrain.txt')
+# calculate bins according to bins size
+differ=max(data)-min(data)
+bins1=np.math.ceil(differ/0.02)# size 0.02
+bins2=np.math.ceil(differ/0.5) # size 0.5
+bins3=np.math.ceil(differ/2)   # size 2.0
+hist1= np.histogram(data,bins1)
+hist2= np.histogram(data,bins2)
+hist3= np.histogram(data,bins3)
+
+#plot histogram
+figure=plt.figure()
+plt.subplot(311);plt.hist(data,bins=bins1,label='bins size=0.02')
+plt.legend()
+plt.subplot(312);plt.hist(data,bins=bins2,label='bins size=0.5')
+plt.legend()
+plt.subplot(313);plt.hist(data,bins=bins3,label='bins size=2')
+plt.legend()
+plt.savefig('histogram')
+plt.show()
+
+
