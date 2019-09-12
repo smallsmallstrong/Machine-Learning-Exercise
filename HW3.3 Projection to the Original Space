@@ -1,0 +1,53 @@
+"""
+Projection to the Original Space
+Date:29.06.2019
+Author:Yulian Sun
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+f= np.loadtxt('../iris.txt', delimiter=',')
+file=f[:,0:4]
+
+class PCA:
+    def __init__(self,D,N,file):
+        self.D = D
+        self.N = N
+        self.file = file
+        self.mu = file.mean(axis=0)
+        self.std = file.std(axis=0)
+
+    def data_normalization(self):
+        norm_data = np.empty((self.N,self.D))
+        norm_data =(self.file - self.mu)/self.std
+        return norm_data
+
+    def principle_component(self,data):
+        n = len(data)
+        cov = 1/n * data.T @ data
+        values ,vectors = np.linalg.eig(cov)
+        index = np.argsort(-values)# from big to small
+        return values ,vectors
+
+    def NRMSE(self,norm_data,vectors,n):
+        arr = np.empty_like((norm_data))
+        for i in range(4):
+            arr[:, i] = vectors[:, i].T @ norm_data.T
+
+        proj = arr[:,0:n] @ vectors[:, 0:n].T
+        print(proj)
+        error = np.sqrt(np.sum((norm_data - proj) ** 2, axis=0) / len(norm_data))
+        return error
+
+N = file.shape[0]
+D = file.shape[1]
+pca = PCA(D,N,file)
+norm_data = pca.data_normalization()
+#print(norm_data)
+values ,vectors = pca.principle_component(norm_data)
+comp_num = 4
+error = np.zeros((4,4))
+for i in range((1,comp_num)):
+    error = pca.NRMSE(norm_data,vectors,i)
+    print('file in components {} is :'.format(i+1),error)
+
