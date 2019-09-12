@@ -1,0 +1,170 @@
+""""
+Implementation
+Date:11.07.2019
+Author:Yulian Sun
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+np.random.seed(12345)
+file = np.loadtxt('../iris-pca.txt')
+
+class SVM:
+    def __init__(self,file):
+        self.file = file
+        self.dataset = self.file[:,0:2]
+        self.N = len(file)
+
+    # classify simply by labels,to get data_plus and data_minus
+    def classify_by_label(self):
+        c1 = [];c2 =[]
+        for i in range(self.N):
+            if (self.file[:,-1][i]==0.0):
+                c1.append(self.file[i])
+            elif(self.file[:,-1][i]==2.0):
+                c2.append(self.file[i])
+        self.c1 = np.array(c1)
+        self.c2 = np.array(c2)
+        self.c1[:,2] = -1.0
+        self.c2[:,2] = 1.0
+        return self.c1,self.c2
+
+    # reconstract data
+    def re_data(self):
+        dot = self.dataset.T @ self.dataset
+        va, ve = np.linalg.eig(dot)
+        delta = 0.0001
+        # reconstract data change labels to -1 or +1
+        data = np.empty((self.N,3))
+        data[:,0:2] = self.dataset
+        for i in range(self.N):
+            if (self.file[:,2][i] == 0.0):
+                data[:,2][i] = 1.0
+            elif(self.file[:,2][i] == 2.0):
+                data[:, 2][i] = -1.0
+        return data
+
+    # find j that is not equal to i
+    def get_j(self,i,N):
+        j = i
+        while (j == i):
+            j = int(np.random.uniform(0, N))
+        return j
+
+    # prune alphaj according to limits(L,H)
+    def prune_alphaj(self,alphaj,L,H):
+        if alphaj > H:
+            alphaj = H
+        elif alphaj >= L and alphaj <= H:
+            alphaj = alphaj
+        else:
+            alphaj = L
+        return alphaj
+
+    # calculate the best alphas
+    def itr_alpha(self,data,C,slack):# C=0.5,slack=0.001
+        # initialize alphas and b
+        alphas = np.zeros((self.N,1))
+        b = 0
+        # initialize number of iteration
+        iter_num = 0
+        # do iteration
+        while(iter_num<self.N):
+            for i in range(self.N):
+                # step 01:calculate error erri
+                fxi = alphas[i]*data[:,2][i]*data[:,0:2][i]@data[:,0:2][i].T+b
+                erri = fxi-data[:,2][i]
+                # update alpha,set up slack variable
+                if((data[:,2][i]*erri < -slack)and (alphas[i] < C)
+                        or (data[:,2][i]*erri>slack) and (alphas[i]>0)):
+                    # select j, and j not equal i
+                    j = self.get_j(i,self.N)
+                    # calculate error errj
+                    fxj = alphas[j]*data[:,2][j]*data[:,0:2][j]@data[:,0:2][j].T+b
+                    errj = fxj - data[:,2][j]
+                    # save pld alpha value
+                    alphai_old = np.copy(alphas[i])
+                    alphaj_old = np.copy(alphas[j])
+
+                    #step 02:calcute superium L and inferium H
+                    if(data[:,2][i] != data[:,2][j]):
+                        L = max(0,alphas[j]-alphas[i])
+                        H = min(C,C+alphas[j]-alphas[i])
+                    else:
+                        L = max(0,alphas[i]+alphas[j]-C)
+                        H = min(C,alphas[i]+alphas[j])
+                    if (L==H):
+                        #print("L==H")
+                        continue
+
+                    # step 03: calculate eta
+                    # use the linear kernel function:K(x1,x2)=x1.T@x1
+                    eta = 2.0*data[i,:]@data[j,:].T-data[i,:]\
+                          @data[i,:].T-data[j,:]@data[j,:].T
+                    if(eta >= 0):
+                        print("eta >= 0")
+                        continue
+                    # step 04:update alphaj
+                    alphas[j] -= data[:,2][j]*(erri-errj)/eta
+                    # step 05:prune alphaj
+                    alphas[j] = self.prune_alphaj(alphas[j],L,H)
+                    # if(np.abs(alphaj_old-alphas[j]) < 0.0001):
+                    # #     print("alphaj change too slowly")
+                    #     continue
+                    # step 06: update alphai
+                    alphas[i]+= data[:,2][i]*data[:,2][j]*(alphaj_old-alphas[j])
+                    # step 07:update b1 and b2
+                    b1 = b-erri-data[:,2][i]*(alphas[i]-alphai_old)*data[i,:]\
+                         @data[i,:].T-data[:,2][j]*\
+                         (alphas[j]-alphaj_old)*data[j,:]@data[j,:].T
+                    b2 = b-errj-data[:,2][i]*(alphas[i]-alphai_old)*data[i,:]\
+                         @data[i,:].T-data[:,2][j]*\
+                         (alphas[j]-alphaj_old)*data[j,:]@data[j,:].T
+                    # step 08:according to b1 and b2 to update b
+                    if (0 < alphas[i]) and (C > alphas[i]):b = b1
+                    elif (0 < alphas[j]) and (C > alphas[j]):b = b2
+                    else:b = (b1 + b2) / 2.0
+                    iter_num +=1
+                    #print("The {}th update,sample {},the {}th alpha updates".format(iter_num,i,updatetime))
+
+        return alphas,b
+
+    # calculate weights
+    def get_W(self,data,alphas):
+        w = np.empty((self.N,2))
+        for i in range(self.N):
+            w[i] = alphas[i]*data[:,2][i]*data[:,0:2][i]
+        W = np.sum(w,axis=0).T
+        return W
+    # calculate the distance between points and desicion boundary
+    def get_outputs(self,data,W,b):
+        disc = np.empty((self.N,1))
+        for i in range(self.N):
+            disc[i] = np.abs(data[:,0:2][i]@W+b)/np.sqrt(W.T@W)
+        return disc
+
+svm = SVM(file)
+data = svm.re_data()
+alphas,b = svm.itr_alpha(data,1,0.0001)
+W = svm.get_W(data,alphas)
+# draw scatters of c1 and c2
+c1,c2= svm.classify_by_label()
+plt.scatter(c1[:,0],c1[:,1],marker='+')
+plt.scatter(c2[:,0],c2[:,1],marker='.')
+# draw decision boundary
+x1 = np.max(data[:,0:2])
+x2 = np.min(data[:,0:2])
+y1 = (-b - W[0]*x1)/W[1]
+y2 = (-b - W[0]*x2)/W[1]
+plt.plot([x1,x2],[y1,y2])
+# gray1 = [y1-(1.0/np.sqrt(W.T@W)),y2-(1.0/np.sqrt(W.T@W))]
+# gray2 = [y1+(1.0/np.sqrt(W.T@W)),y2+(1.0/np.sqrt(W.T@W))]
+# plt.fill_between([x1,x2],gray1,gray2,facecolor='yellow',alpha=0.5)
+# find suport vectors
+disc = svm.get_outputs(data,W,b)
+#print(1.0/np.sqrt(W.T@W))
+#print(disc)
+for i in range(len(alphas)):
+    if (alphas[i]>0):
+        x,y = data[:,0:2][i]
+        plt.scatter([x],[y],s=150,c='none',alpha=0.7,linewidth=1.2,edgecolors='blue')
+plt.show()
