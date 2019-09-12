@@ -1,0 +1,105 @@
+"""
+Rosenbrock’s function (to be minimized) is defined as
+
+Write in Python a simple gradient descent algorithm and simulate it for 10,000 steps on Rosenbrock’s function
+with n = 20. Attach a snippet of your algorithm, discuss the effects of the learning rate and attach a plot of your
+learning curve with your best learning rate.
+
+Date:16.05.2019
+Author:Yulian Sun
+___________________________________________________________________________________________________________________
+A simple gradient Descent Algorithm is as follows:
+1.Obtain a function to minimize F(x)
+2.Initialize a value x from which to start the descent or optimization from
+3.Specify a learning rate that will determine how much of a step to descend by or how quickly you converge to the minimum value
+4.Obtain the derivative of that value x (the descent)
+5.Proceed to descend by the derivative of that value multiplied by the learning rate
+6.Update the value of x with the new value descended to
+7.Check your stop condition to see whether to stop
+8.If condition satisfied, stop. If not, proceed to step 4 with the new x value and keep repeating algorithm
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def rosen_function(x):
+    """
+     Rosenbrock's function
+    :param x:
+    :return:
+    """
+    rosen_sum = 0
+    for i in range(0,19):
+        rosen_sum = rosen_sum + 100*(x[i+1]-x[i]**2)**2 + (x[i]-1)**2
+    return rosen_sum
+
+def cal_rosenbrock_dre1(x):
+    """
+    calculate derivative of Rosenbrock's function
+    :param x:
+    :return:
+    """
+    der_rosen1 = np.zeros(20)
+    der_rosen1[0] = (-2) + 2 * x[1] - 400 * (x[1] - x[0] ** 2) * x[0]
+    for i in range(1,19):
+        der_rosen1[i] = (-2) + 2 * x[i] - 400 * (x[i+1] - x[i] ** 2) * x[i]
+    return der_rosen1
+
+def cal_rosenbrock_dre2(x):
+    """
+    calculate derivative of Rosenbrock's function
+    :param x:
+    :return:
+    """
+    der_rosen2 = np.zeros(20)
+    der_rosen2[0] = 200 * (x[1] - x[0] ** 2)
+    for i in range(1,19):
+        der_rosen2[i] = 200 * (x[i+1] - x[i] ** 2)
+    return der_rosen2
+
+def gradient_descent(x,learning_rate,iterations):
+    for j in range(0,iterations):
+        gd1 = cal_rosenbrock_dre1(x)
+        gd2 = cal_rosenbrock_dre2(x)
+        x = x - learning_rate * (gd1 + gd2)
+        rf = rosen_function(x)
+        print("this is",j+1 ,",and the value of Rosenbrock's function is:",rf)
+
+def draw_gradient(x,learning_rate,iterations):
+    X = []
+    Y = []
+    for j in range(0,iterations):
+        gd1 = cal_rosenbrock_dre1(x)
+        gd2 = cal_rosenbrock_dre2(x)
+        x = x - learning_rate * (gd1 + gd2)
+        X.append(x[0])
+        rf = rosen_function(x)
+        Y.append(rf)
+
+    return X,Y
+
+def main():
+    x = np.zeros(20)
+    x[0] = 0.8
+    # print(x)
+    lr = [0.0001,0.00001,0.000001,0.0000001,0.00000001]
+    iterations = 10000
+    ltList =  range(0,iterations)
+    X,drawY0 = draw_gradient(x, lr[0], iterations)
+    X,drawY1 = draw_gradient(x, lr[1], iterations)
+    X, drawY2 = draw_gradient(x, lr[2], iterations)
+    X, drawY3 = draw_gradient(x, lr[3], iterations)
+    X, drawY4 = draw_gradient(x, lr[4], iterations)
+    plt.plot(ltList,drawY0,linewidth=1)
+    plt.plot(ltList, drawY1,linewidth=1)
+    plt.plot(ltList, drawY2, linewidth=1)
+    plt.plot(ltList, drawY3, linewidth=1)
+    plt.plot(ltList, drawY4, linewidth=1)
+    plt.legend((lr[0],lr[1],lr[2],lr[3],lr[4]),loc='upper center', shadow=True)
+    plt.title("Gradient Descent")
+    plt.xlabel('Iterations')
+    plt.ylabel('Rosenbrock function')
+    plt.show()
+
+if __name__ == '__main__':
+        main()
