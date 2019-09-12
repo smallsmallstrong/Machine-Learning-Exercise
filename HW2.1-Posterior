@@ -1,0 +1,109 @@
+"""
+Posterior distribution
+Date:03.06.2019
+Author:Yulian Sun
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+# plotting cosmetics
+plt.style.use('bmh')
+
+# example of a linear model
+import scipy
+from sklearn import svm
+f1 = np.loadtxt('../densEst1.txt', dtype=float)
+f2 = np.loadtxt('../densEst2.txt', dtype=float)
+class Classifier:
+    def __init__(self,file1,file2,mu1,sigma1,mu2,sigma2):
+        self.file1 = file1
+        self.file2 = file2
+        self.mu1 = mu1
+        self.sigama1 = sigma1
+        self.mu2 = mu2
+        self.sigama2 = sigma2
+
+    def prior_probability(self):
+        len1 = len(self.file1)
+        len2 = len(self.file2)
+        p_c1 = len1/(len1+len2)
+        p_c2 = len2/(len1+len2)
+        return p_c1,p_c2
+
+    def likelihood(self,x,mu,sigma,p_c):
+        n = mu.shape[0]
+        sigma_det = np.linalg.det(sigma)
+        sigma_inv = np.linalg.inv(sigma)
+        N = np.sqrt((2 * np.pi) ** n * sigma_det)
+        #fac = np.dot(np.dot((x-mu),sigma_inv),(x-mu).T)
+        fac = np.einsum('...k,kl,...l->...', x - mu, sigma_inv, x - mu)
+        likelihood = np.exp(-fac / 2) / N
+        #pd = likelihood * p_c
+        return likelihood
+
+    def posterior(self,x):
+        p_c1, p_c2 = self.prior_probability()
+        likelihood1 = self.likelihood(x,self.mu1,self.sigama1,p_c1)
+        likelihood2 = self.likelihood(x,self.mu2,self.sigama2,p_c2)
+        pd1 = likelihood1/(likelihood1*p_c1+likelihood2*p_c2)
+        pd2 = likelihood2/(likelihood1*p_c1+likelihood2*p_c2)
+        return pd1,pd2
+
+    def boundary_decision(self,clf,X,Y):
+        h = 0.02
+        x_min, x_max = X[:, 0].min() - 10 * h, X[:, 0].max() + 10 * h
+        y_min, y_max = X[:, 1].min() - 10 * h, X[:, 1].max() + 10 * h
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                             np.arange(y_min, y_max, h))
+        Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+        Z = Z.reshape(xx.shape)
+
+def main():
+    file1 = f1
+    file2 = f2
+    mu1 = np.mean(file1, axis=0)  # C1 average
+    mu2 = np.mean(file2, axis=0)  # C2 average
+    sigma1 = np.cov(file1.T, bias=False) # square sigma for file1
+    sigma2 = np.cov(file2.T, bias=False) # square sigma for file2
+    classifier = Classifier(file1,file2,mu1,sigma1,mu2,sigma2)
+    p_c1,p_c2 = classifier.prior_probability()
+
+    X1 = np.linspace(-10, 10, len(file1))
+    Y1 = np.linspace(-10, 10, len(file1))
+    X1, Y1 = np.meshgrid(X1, Y1)
+    pos1 = np.empty(X1.shape + (2,))
+    pos1[:, :, 0] = X1
+    pos1[:, :, 1] = Y1
+    pd1,pd2 = classifier.posterior(pos1)
+
+    X2 = np.linspace(-10, 10, len(file2))
+    Y2 = np.linspace(-10, 10, len(file2))
+    X2, Y2 = np.meshgrid(X2, Y2)
+    pos2 = np.empty(X2.shape + (2,))
+    pos2[:, :, 0] = X2
+    pos2[:, :, 1] = Y2
+    pd1_,pd2_ = classifier.posterior(pos2)
+
+    fig, ax = plt.subplots()
+    CS1 = plt.contour(X1, Y1, pd1, colors='yellow', linestyles='solid',)
+    CS2 = plt.contour(X2, Y2, pd2_, colors='pink', linestyles='solid',)
+    ax.clabel(CS1, inline=1, fontsize=10)
+    ax.clabel(CS2, inline=1, fontsize=10)
+
+    # show the decision boundary
+    X = np.concatenate((file1, file2), axis=0)
+    Y = np.array([0] * len(file1) + [1] * len(file2))
+    C = 1.0  # SVM regularization parameter
+    clf = svm.SVC(kernel='linear', gamma=0.7)
+    clf.fit(X, Y)
+    w = clf.coef_[0]
+    a = -w[0] / w[1]
+    xx = np.linspace(-5, 5)
+    yy = a * xx - (clf.intercept_[0]) / w[1]
+
+    plt.plot(xx, yy, 'k-')
+    plt.scatter(file1[:, 0], file1[:, 1],marker='+')
+    plt.scatter(file2[:, 0], file2[:, 1],marker='o')
+    plt.ylabel('Posterior distribution of each class:')
+    plt.show()
+if __name__ == '__main__':
+        main()
