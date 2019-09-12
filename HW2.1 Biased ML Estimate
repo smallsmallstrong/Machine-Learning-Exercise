@@ -1,0 +1,46 @@
+"""
+Biased ML Estimate
+Date:02.06.2019
+Author:Yulian Sun
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+f1 = np.loadtxt('../densEst1.txt', dtype=float)
+f2 = np.loadtxt('../densEst2.txt', dtype=float)
+
+def gaussian_value(x, mu, sigma):
+    n = mu.shape[0]
+    sigma_det = np.linalg.det(sigma)
+    sigma_inv = np.linalg.inv(sigma)
+    bott = np.sqrt((2 * np.pi) ** n * sigma_det)
+    fac = (x - mu).dot(sigma_inv).dot((x - mu).T)
+    equ = np.exp(-fac / 2) / bott
+    return equ
+
+def main():
+    file1 = f1
+    mu1 = np.mean(file1, axis=0)  # C1 average
+    print(mu1)
+    len1 = len(file1)
+    sigma_squa1 = np.cov(file1.T, bias=True)
+    unsigma_squa1 = np.cov(file1.T, bias=False)
+    esti1_list = []
+    for i in range(len1):
+        esti1_list.append(gaussian_value(file1[i], mu1, sigma_squa1))
+    estimator1=esti1_list
+
+    un_estimator1 = gaussian_value(file1, mu1, unsigma_squa1)
+    print('biased estimator for C1 is\n',estimator1,'\n unbiased estimator for C1 is\n',un_estimator1)
+
+    file2 = f2
+    mu2 = np.mean(file2, axis=0)  # C2 average
+    print(mu2)
+    len2 = len(file2)
+    sigma_squa2 = np.cov(file1.T, bias=True)
+    unsigma_squa2 = np.cov(file1.T, bias=False)
+    estimator2 = gaussian_value(file2, mu2, sigma_squa1)
+    un_estimator2 = gaussian_value(file2, mu2, unsigma_squa1)
+    print('biased estimator for C2 is\n', estimator2, '\n unbiased estimator for C2 is\n', un_estimator2)
+if __name__ == '__main__':
+        main()
